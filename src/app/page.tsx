@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useTransition } from "react";
+import { useState, useEffect, useMemo, useCallback, useTransition, useRef } from "react";
 import { calculateVolumeConfidenceScore, VolumeConfidenceScoreInput } from "@/ai/flows/volume-confidence-score";
+import { detectObjectsInImage, DetectObjectsOutput } from "@/ai/flows/object-detection";
 import { Header } from "@/components/volume-vision/header";
 import { SettingsDialog } from "@/components/volume-vision/settings-dialog";
 import { CameraView, FacingMode } from "@/components/volume-vision/camera-view";
@@ -11,6 +12,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { ScanLine } from "lucide-react";
+import { DetectedObject } from "@/components/volume-vision/camera-view";
 
 export type Unit = "ml" | "oz";
 
@@ -24,7 +26,10 @@ export default function Home() {
   const [isDetecting, setDetecting] = useState(true);
   
   const [confidence, setConfidence] = useState<{ score: number; reasoning: string } | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [detectedObjects, setDetectedObjects] = useState<DetectedObject[]>([]);
+  const [isAiPending, startAiTransition] = useTransition();
+
+  const videoRef = useRef<HTMLVideoElement>(null);
   
   const { toast } = useToast();
 
@@ -33,7 +38,7 @@ export default function Home() {
   }, [liquidLevel]);
 
   const updateConfidence = useCallback(async (currentVolume: number) => {
-    if (!isDetecting) {
+    if (!isDetecting || detectedObjects.length === 0) {
         setConfidence(null);
         return;
     }
@@ -56,13 +61,55 @@ export default function Home() {
       });
       setConfidence(null);
     }
-  }, [isDetecting, liquidLevel, toast]);
+  }, [isDetecting, liquidLevel, toast, detectedObjects.length]);
   
+  const runObjectDetection = useCallback(async () => {
+    if (!isDetecting || !videoRef.current || videoRef.current.readyState < 2) {
+      if (detectedObjects.length > 0) setDetectedObjects([]);
+      return;
+    }
+
+    const video = videoRef.current;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageDataUri = canvas.toDataURL('image/jpeg');
+
+    try {
+      const result = await detectObjectsInImage({ imageDataUri });
+      const glasses = result.objects.filter(obj => obj.label === 'drinking glass');
+      setDetectedObjects(glasses);
+    } catch (error) {
+      console.error("Failed to detect objects:", error);
+      setDetectedObjects([]);
+       toast({
+        variant: "destructive",
+        title: "AI Error",
+        description: "Could not perform object detection.",
+      });
+    }
+  }, [isDetecting, toast, detectedObjects.length]);
+
   useEffect(() => {
-    startTransition(() => {
+    const detectionInterval = setInterval(() => {
+        startAiTransition(() => {
+            runObjectDetection();
+        });
+    }, 2000); // Run detection every 2 seconds
+
+    return () => clearInterval(detectionInterval);
+  }, [runObjectDetection]);
+
+
+  useEffect(() => {
+    startAiTransition(() => {
       updateConfidence(volumeInMl);
     });
-  }, [volumeInMl, updateConfidence]);
+  }, [volumeInMl, detectedObjects, updateConfidence]);
   
   const handleLiquidLevelChange = (value: number[]) => {
     setLiquidLevel(value[0]);
@@ -76,6 +123,8 @@ export default function Home() {
     setFacingMode(newMode);
   }
 
+  const isSimulating = detectedObjects.length === 0;
+
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <Header onSettingsClick={() => setSettingsOpen(true)} />
@@ -85,21 +134,24 @@ export default function Home() {
             
             <div className="lg:col-span-2 flex justify-center">
               <CameraView
+                ref={videoRef}
                 liquidLevel={liquidLevel}
                 volume={volumeInMl}
                 unit={unit}
                 confidenceScore={confidence?.score ?? null}
                 isDetecting={isDetecting}
                 facingMode={facingMode}
+                detectedObjects={detectedObjects}
+                isSimulating={isSimulating}
               />
             </div>
 
             <div className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Simulation Controls</CardTitle>
+                  <CardTitle>Controls</CardTitle>
                   <CardDescription>
-                    Adjust the parameters to simulate volume detection.
+                    {isSimulating ? "Adjust parameters to simulate volume detection." : "Detection is live. Simulation is paused."}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-4">
@@ -123,25 +175,25 @@ export default function Home() {
                       step={1}
                       value={[liquidLevel]}
                       onValueChange={handleLiquidLevelChange}
-                      disabled={!isDetecting}
+                      disabled={!isDetecting || !isSimulating}
                     />
                   </div>
                 </CardContent>
               </Card>
               
-              <Card className={isPending || !confidence ? 'opacity-60' : ''}>
+              <Card className={isAiPending || !confidence ? 'opacity-60' : ''}>
                  <CardHeader>
                    <CardTitle>AI Analysis</CardTitle>
                    <CardDescription>
                      Confidence score and reasoning from the AI model.
                    </CardDescription>
-                 </CardHeader>
+                 </Header>
                  <CardContent>
-                    {isPending && <p className="text-sm text-muted-foreground">Calculating confidence...</p>}
-                    {!isPending && confidence && (
+                    {(isAiPending) && <p className="text-sm text-muted-foreground">Analyzing...</p>}
+                    {!isAiPending && confidence && (
                         <p className="text-sm">{confidence.reasoning}</p>
                     )}
-                    {!isPending && !confidence && <p className="text-sm text-muted-foreground">Enable detection to see AI analysis.</p>}
+                    {!isAiPending && !confidence && <p className="text-sm text-muted-foreground">{!isDetecting ? "Enable detection to see AI analysis." : "Point the camera at a glass."}</p>}
                  </CardContent>
               </Card>
             </div>
