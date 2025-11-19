@@ -47,7 +47,7 @@ The bounding box should be in normalized coordinates [x_min, y_min, x_max, y_max
 
 Image: {{media url=imageDataUri}}
 
-If you do not find any drinking glasses, return an empty list of objects.
+If you do not find any drinking glasses, you must return an empty list of objects.
 `,
 });
 

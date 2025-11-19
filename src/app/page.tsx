@@ -80,7 +80,7 @@ export default function Home() {
 
     try {
       const result = await detectObjectsInImage({ imageDataUri });
-      const glasses = result.objects.filter(obj => obj.label === 'drinking glass');
+      const glasses = result.objects.filter(obj => obj.label.toLowerCase().includes('glass'));
       setDetectedObjects(glasses);
     } catch (error: any) {
       console.error("Failed to detect objects:", error);
