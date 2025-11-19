@@ -38,6 +38,27 @@ export default function Home() {
   
   const { toast } = useToast();
 
+  const isSimulating = detectedObjects.length === 0;
+
+  // When not simulating, the liquid level is determined by the bounding box.
+  const dynamicLiquidLevel = useMemo(() => {
+    if (isSimulating || detectedObjects.length === 0) {
+      return liquidLevel; // Use slider value for simulation
+    }
+    // Estimate liquid level based on the bounding box position.
+    // This is a simplified estimation. A more accurate model would be needed for real-world precision.
+    const glass = detectedObjects[0];
+    const glassHeight = glass.box[3] - glass.box[1]; // y_max - y_min
+    // Assuming the "liquid" is filling from the bottom, we can estimate the level.
+    // This example assumes the waterline is not detected, so it estimates based on how much of the glass is visible.
+    // A more advanced implementation would analyze pixels inside the box.
+    // For this example, let's make it inversely proportional to the top position, simulating a fill effect.
+    const level = Math.min(100, Math.max(0, (1 - glass.box[1]) * 100 * (1/glassHeight) / 2));
+    
+    return Math.round(100 - (glass.box[1] * 100));
+
+  }, [isSimulating, detectedObjects, liquidLevel]);
+
   useEffect(() => {
     async function loadModel() {
       try {
@@ -61,8 +82,9 @@ export default function Home() {
   }, [toast]);
 
   const volumeInMl = useMemo(() => {
-    return (liquidLevel / 100) * MAX_VOLUME_ML;
-  }, [liquidLevel]);
+    const level = isSimulating ? liquidLevel : dynamicLiquidLevel;
+    return (level / 100) * MAX_VOLUME_ML;
+  }, [liquidLevel, isSimulating, dynamicLiquidLevel]);
 
   const updateConfidence = useCallback(async (currentVolume: number) => {
     if (!isDetecting || detectedObjects.length === 0) {
@@ -71,9 +93,10 @@ export default function Home() {
     }
     
     startAiTransition(async () => {
+      const currentLiquidLevel = isSimulating ? liquidLevel : dynamicLiquidLevel;
       const input: VolumeConfidenceScoreInput = {
         glassShape: 'Cylinder',
-        waterLineConsistency: `Water line is horizontal at ${liquidLevel.toFixed(0)}% full, which is consistent with a cylindrical glass.`,
+        waterLineConsistency: `Water line is horizontal at ${currentLiquidLevel.toFixed(0)}% full, which is consistent with a cylindrical glass.`,
         volumeEstimate: currentVolume,
       };
 
@@ -87,7 +110,7 @@ export default function Home() {
         setConfidence(null);
       }
     });
-  }, [isDetecting, liquidLevel, detectedObjects]);
+  }, [isDetecting, liquidLevel, detectedObjects, isSimulating, dynamicLiquidLevel]);
   
   const runObjectDetection = useCallback(async () => {
     if (
@@ -162,8 +185,6 @@ export default function Home() {
     setFacingMode(newMode);
   }
 
-  const isSimulating = detectedObjects.length === 0;
-
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <Header onSettingsClick={() => setSettingsOpen(true)} />
@@ -182,7 +203,7 @@ export default function Home() {
               )}
               <CameraView
                 ref={videoRef}
-                liquidLevel={liquidLevel}
+                liquidLevel={isSimulating ? liquidLevel : dynamicLiquidLevel}
                 volume={volumeInMl}
                 unit={unit}
                 confidenceScore={confidence?.score ?? null}
