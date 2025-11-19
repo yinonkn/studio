@@ -1,9 +1,10 @@
 "use client";
 
-import Image from "next/image";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type CameraViewProps = {
   liquidLevel: number; // 0-100
@@ -13,10 +14,6 @@ type CameraViewProps = {
   isDetecting: boolean;
 };
 
-const glassPlaceholder = PlaceHolderImages.find(
-  (img) => img.id === "glass-of-water"
-);
-
 export function CameraView({
   liquidLevel,
   volume,
@@ -24,6 +21,36 @@ export function CameraView({
   confidenceScore,
   isDetecting,
 }: CameraViewProps) {
+  const { toast } = useToast();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(
+    null
+  );
+
+  useEffect(() => {
+    const getCameraPermission = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        setHasCameraPermission(true);
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (error) {
+        console.error("Error accessing camera:", error);
+        setHasCameraPermission(false);
+        toast({
+          variant: "destructive",
+          title: "Camera Access Denied",
+          description:
+            "Please enable camera permissions in your browser settings to use this app.",
+        });
+      }
+    };
+
+    getCameraPermission();
+  }, [toast]);
+  
   const ozVolume = volume * 0.033814;
   const displayVolume = unit === 'oz' ? ozVolume : volume;
 
@@ -34,19 +61,23 @@ export function CameraView({
 
   return (
     <div className="relative w-full max-w-md mx-auto aspect-[3/4] overflow-hidden rounded-2xl shadow-2xl bg-neutral-800 border-4 border-neutral-700">
-      {glassPlaceholder ? (
-        <Image
-          src={glassPlaceholder.imageUrl}
-          alt={glassPlaceholder.description}
-          fill
-          className="object-cover"
-          data-ai-hint={glassPlaceholder.imageHint}
-          priority
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-        />
-      ) : (
-        <div className="w-full h-full bg-muted flex items-center justify-center">
-            <p className="text-muted-foreground">Image not found</p>
+      <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+
+      {hasCameraPermission === false && (
+        <div className="absolute inset-0 bg-background/90 flex items-center justify-center p-4">
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Camera Access Required</AlertTitle>
+            <AlertDescription>
+              Please allow camera access in your browser settings to use this feature. You may need to refresh the page after granting permission.
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+      
+      {hasCameraPermission === null && (
+        <div className="absolute inset-0 bg-background/90 flex items-center justify-center">
+            <p>Requesting camera permission...</p>
         </div>
       )}
 
