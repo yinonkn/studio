@@ -16,7 +16,6 @@ type CameraViewProps = {
   liquidLevel: number; // 0-100
   volume: number;
   unit: "ml" | "oz";
-  confidenceScore: number | null;
   isDetecting: boolean;
   facingMode: FacingMode;
   detectedObjects: DetectedObject[];
@@ -27,7 +26,6 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
   liquidLevel,
   volume,
   unit,
-  confidenceScore,
   isDetecting,
   facingMode,
   detectedObjects,
@@ -94,6 +92,7 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
           "absolute inset-0 transition-opacity duration-500",
           isDetecting ? "opacity-100" : "opacity-0"
         )}
+        style={{ perspective: "1000px" }}
       >
         {/* Bounding Boxes for detected objects */}
         {detectedObjects.map((obj, index) => {
@@ -106,21 +105,24 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
           return (
             <div key={index}>
               <div
-                className="absolute border-2 border-accent rounded-lg shadow-lg"
+                className="absolute border-2 border-accent rounded-xl shadow-2xl transition-all duration-500"
                 style={{
                   left: `${xMin * 100}%`,
                   top: `${yMin * 100}%`,
                   width: `${boxWidth}%`,
                   height: `${boxHeight}%`,
+                  transform: "rotateY(10deg) rotateX(2deg) translateZ(50px)",
+                  boxShadow: "0 10px 30px rgba(0, 0, 0, 0.3)",
                 }}
               ></div>
               <div
-                className="absolute overflow-hidden rounded-b-md"
+                className="absolute overflow-hidden rounded-xl"
                  style={{
                   left: `${xMin * 100}%`,
                   top: `${yMin * 100}%`,
                   width: `${boxWidth}%`,
                   height: `${boxHeight}%`,
+                  transform: "rotateY(10deg) rotateX(2deg) translateZ(50px)",
                 }}
               >
                 <div
