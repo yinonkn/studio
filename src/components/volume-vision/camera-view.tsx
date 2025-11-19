@@ -111,20 +111,13 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
                 width: `${boxWidth}%`,
                 height: `${boxHeight}%`,
                 transformStyle: "preserve-3d",
-                transform: "rotateY(10deg) rotateX(2deg)",
               }}
             >
               <div
-                className="w-full h-full border-2 border-accent/70 rounded-full shadow-2xl"
+                className="w-full h-full border-2 border-accent/70 rounded-lg shadow-2xl"
                 style={{
-                  transform: 'translateZ(25px) scale(0.95)',
-                  boxShadow: "0 10px 40px rgba(0, 180, 255, 0.3)",
-                }}
-              ></div>
-              <div
-                className="absolute top-0 left-0 w-full h-full overflow-hidden rounded-full"
-                 style={{
-                  transform: 'translateZ(25px) scale(0.95)',
+                  transform: 'translateZ(30px) rotateY(15deg)',
+                  boxShadow: "0 15px 50px rgba(0, 180, 255, 0.3)",
                 }}
               >
                 <div
