@@ -2,17 +2,16 @@
 
 import { useState, useEffect, useMemo, useCallback, useTransition, useRef } from "react";
 import { calculateVolumeConfidenceScore, VolumeConfidenceScoreInput } from "@/ai/flows/volume-confidence-score";
-import { detectObjectsInImage, DetectObjectsOutput } from "@/ai/flows/object-detection";
+import { detectObjectsInImage } from "@/ai/flows/object-detection";
 import { Header } from "@/components/volume-vision/header";
 import { SettingsDialog } from "@/components/volume-vision/settings-dialog";
-import { CameraView, FacingMode } from "@/components/volume-vision/camera-view";
+import { CameraView, FacingMode, DetectedObject } from "@/components/volume-vision/camera-view";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { ScanLine } from "lucide-react";
-import { DetectedObject } from "@/components/volume-vision/camera-view";
 
 export type Unit = "ml" | "oz";
 
@@ -187,7 +186,7 @@ export default function Home() {
                    <CardDescription>
                      Confidence score and reasoning from the AI model.
                    </CardDescription>
-                 </Header>
+                 </CardHeader>
                  <CardContent>
                     {(isAiPending) && <p className="text-sm text-muted-foreground">Analyzing...</p>}
                     {!isAiPending && confidence && (
