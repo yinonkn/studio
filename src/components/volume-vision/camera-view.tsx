@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState, forwardRef } from "react";
+import React, { useEffect, useRef, forwardRef } from "react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useOrientation } from "@/hooks/use-orientation";
@@ -83,7 +83,7 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
   return (
     <div className={cn(
       "relative w-full h-full mx-auto overflow-hidden rounded-2xl shadow-2xl bg-neutral-800 border-4 border-neutral-700"
-    )} style={{ perspective: '1000px' }}>
+    )}>
       <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
       
       <div
@@ -103,17 +103,17 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
           return (
             <div
               key={index}
-              className="absolute border-2 border-accent/70 rounded-xl shadow-2xl backdrop-blur-sm"
+              className="absolute border-2 border-accent/70 backdrop-blur-sm"
               style={{
                 left: `${xMin * 100}%`,
                 top: `${yMin * 100}%`,
                 width: `${boxWidth}%`,
                 height: `${boxHeight}%`,
-                boxShadow: "0 10px 40px rgba(0, 180, 255, 0.25)",
+                clipPath: 'polygon(15% 0, 85% 0, 100% 100%, 0% 100%)',
               }}
             >
               <div
-                className="absolute bottom-0 left-0 w-full bg-sky-500/50 transition-all duration-500 ease-in-out rounded-b-xl"
+                className="absolute bottom-0 left-0 w-full bg-sky-500/50 transition-all duration-500 ease-in-out"
                 style={{ height: waterHeight }}
               />
             </div>
