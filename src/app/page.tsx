@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import * as tf from '@tensorflow/tfjs';
 import * as cocossd from '@tensorflow-models/coco-ssd';
 
-import { calculateVolumeConfidenceScore, VolumeConfidenceScoreInput } from "@/ai/flows/volume-confidence-score";
 import { Header } from "@/components/volume-vision/header";
 import { SettingsDialog } from "@/components/volume-vision/settings-dialog";
 import { CameraView, FacingMode, DetectedObject } from "@/components/volume-vision/camera-view";
@@ -21,7 +20,6 @@ export default function Home() {
   const [isSettingsOpen, setSettingsOpen] = useState(false);
   
   const [detectedObjects, setDetectedObjects] = useState<DetectedObject[]>([]);
-  const [confidenceScore, setConfidenceScore] = useState<number | null>(null);
   
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -36,6 +34,9 @@ export default function Home() {
     }
     const glass = detectedObjects[0];
     const boxHeight = glass.box[3] - glass.box[1];
+    // This is a simplified calculation. A more accurate one would require knowing the camera's FOV and distance to the object.
+    // We are assuming the bottom of the glass is just outside the bottom of the bounding box.
+    // The liquid level is the inverse of the top position of the box, scaled by its height.
     return Math.max(0, Math.min(100, 100 - (glass.box[1] / (1 - boxHeight)) * 100));
 
   }, [detectedObjects]);
@@ -65,26 +66,6 @@ export default function Home() {
   const volumeInMl = useMemo(() => {
     return (dynamicLiquidLevel / 100) * MAX_VOLUME_ML;
   }, [dynamicLiquidLevel]);
-
-  const getConfidenceScore = useCallback(async (glass: DetectedObject) => {
-    try {
-      const input: VolumeConfidenceScoreInput = {
-        glassShape: glass.label,
-        waterLineConsistency: 'consistent', // This is a placeholder for now
-        volumeEstimate: volumeInMl,
-      };
-      const result = await calculateVolumeConfidenceScore(input);
-      setConfidenceScore(result.confidenceScore);
-    } catch(e) {
-      console.error("Could not get confidence score", e);
-      toast({
-        variant: 'destructive',
-        title: 'AI Confidence Error',
-        description: 'Failed to calculate the volume confidence score.'
-      });
-      setConfidenceScore(null);
-    }
-  }, [volumeInMl, toast]);
   
   const runObjectDetection = useCallback(async () => {
     if (
@@ -115,11 +96,6 @@ export default function Home() {
           ],
         }));
       setDetectedObjects(glasses);
-      if (glasses.length > 0) {
-        getConfidenceScore(glasses[0]);
-      } else {
-        setConfidenceScore(null);
-      }
     } catch (error: any) {
       console.error("Failed to detect objects:", error);
       setDetectedObjects([]);
@@ -129,7 +105,7 @@ export default function Home() {
         description: `Could not perform object detection: ${error.message}`,
       });
     }
-  }, [toast, detectedObjects.length, getConfidenceScore]);
+  }, [toast, detectedObjects.length]);
 
   useEffect(() => {
     if (modelRef.current && hasCameraPermission) {
@@ -174,7 +150,7 @@ export default function Home() {
               liquidLevel={dynamicLiquidLevel}
               volume={volumeInMl}
               unit={unit}
-              confidenceScore={confidenceScore}
+              confidenceScore={null}
               isDetecting={true}
               facingMode={facingMode}
               detectedObjects={detectedObjects}

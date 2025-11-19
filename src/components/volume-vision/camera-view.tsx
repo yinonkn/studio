@@ -83,9 +83,6 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
 
   const waterHeight = `${liquidLevel}%`;
 
-  const confidenceColor = confidenceScore === null ? "text-muted-foreground" : confidenceScore > 0.7 ? "text-success" : confidenceScore > 0.4 ? "text-warning" : "text-danger";
-  const ConfidenceIcon = confidenceScore === null ? AlertTriangle : confidenceScore > 0.7 ? CheckCircle2 : AlertTriangle;
-
   return (
     <div className={cn(
       "relative w-full h-full mx-auto overflow-hidden rounded-2xl shadow-2xl bg-neutral-800 border-4 border-neutral-700"
@@ -141,14 +138,6 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
             <p className="font-semibold text-lg">
               {displayVolume.toFixed(0)} {unit}
             </p>
-            {confidenceScore !== null && (
-              <div className="flex items-center gap-1.5 mt-1 text-xs">
-                <ConfidenceIcon className={cn("h-4 w-4", confidenceColor)} />
-                <span className={cn("font-medium", confidenceColor)}>
-                  Confidence: {(confidenceScore * 100).toFixed(0)}%
-                </span>
-              </div>
-            )}
           </div>
         )}
       </div>
