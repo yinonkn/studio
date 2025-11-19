@@ -2,7 +2,6 @@
 
 import React, { useEffect, useRef, useState, forwardRef } from "react";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useOrientation } from "@/hooks/use-orientation";
 
@@ -103,26 +102,29 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
           if (boxWidth <= 0 || boxHeight <= 0) return null;
 
           return (
-            <div key={index}>
+            <div 
+              key={index}
+              className="absolute"
+              style={{
+                left: `${xMin * 100}%`,
+                top: `${yMin * 100}%`,
+                width: `${boxWidth}%`,
+                height: `${boxHeight}%`,
+                transformStyle: "preserve-3d",
+                transform: "rotateY(10deg) rotateX(2deg)",
+              }}
+            >
               <div
-                className="absolute border-2 border-accent rounded-xl shadow-2xl transition-all duration-500"
+                className="w-full h-full border-2 border-accent/70 rounded-full shadow-2xl"
                 style={{
-                  left: `${xMin * 100}%`,
-                  top: `${yMin * 100}%`,
-                  width: `${boxWidth}%`,
-                  height: `${boxHeight}%`,
-                  transform: "rotateY(10deg) rotateX(2deg) translateZ(50px)",
-                  boxShadow: "0 10px 30px rgba(0, 0, 0, 0.3)",
+                  transform: 'translateZ(25px) scale(0.95)',
+                  boxShadow: "0 10px 40px rgba(0, 180, 255, 0.3)",
                 }}
               ></div>
               <div
-                className="absolute overflow-hidden rounded-xl"
+                className="absolute top-0 left-0 w-full h-full overflow-hidden rounded-full"
                  style={{
-                  left: `${xMin * 100}%`,
-                  top: `${yMin * 100}%`,
-                  width: `${boxWidth}%`,
-                  height: `${boxHeight}%`,
-                  transform: "rotateY(10deg) rotateX(2deg) translateZ(50px)",
+                  transform: 'translateZ(25px) scale(0.95)',
                 }}
               >
                 <div
