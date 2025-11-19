@@ -5,12 +5,12 @@ import { cn } from "@/lib/utils";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useOrientation, Orientation } from "@/hooks/use-orientation";
+import { useOrientation } from "@/hooks/use-orientation";
 
 export type FacingMode = "user" | "environment";
 export type DetectedObject = {
   label: string;
-  box: number[]; // [x_min, y_min, x_max, y_max]
+  box: number[]; // [x_min, y_min, x_max, y_max] normalized
 };
 
 type CameraViewProps = {
@@ -22,6 +22,7 @@ type CameraViewProps = {
   facingMode: FacingMode;
   detectedObjects: DetectedObject[];
   isSimulating: boolean;
+  onCameraPermissionChange: (hasPermission: boolean) => void;
 };
 
 export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
@@ -33,18 +34,17 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
   facingMode,
   detectedObjects,
   isSimulating,
+  onCameraPermissionChange,
 }, ref) => {
   const { toast } = useToast();
   const internalVideoRef = useRef<HTMLVideoElement>(null);
   const videoRef = (ref as React.RefObject<HTMLVideoElement>) || internalVideoRef;
 
-  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(
-    null
-  );
   const streamRef = useRef<MediaStream | null>(null);
   const orientation = useOrientation();
 
   useEffect(() => {
+    // Stop any existing stream
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
     }
@@ -55,14 +55,14 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
           video: { facingMode: facingMode }
         });
         streamRef.current = stream;
-        setHasCameraPermission(true);
+        onCameraPermissionChange(true);
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
       } catch (error) {
         console.error("Error accessing camera:", error);
-        setHasCameraPermission(false);
+        onCameraPermissionChange(false);
         toast({
           variant: "destructive",
           title: "Camera Access Denied",
@@ -79,7 +79,7 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
         streamRef.current.getTracks().forEach(track => track.stop());
       }
     }
-  }, [toast, facingMode, videoRef]);
+  }, [toast, facingMode, videoRef, onCameraPermissionChange]);
 
   const ozVolume = volume * 0.033814;
   const displayVolume = unit === 'oz' ? ozVolume : volume;
@@ -95,38 +95,19 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
       orientation === 'portrait' ? "max-w-md aspect-[3/4]" : "max-w-xl aspect-video"
     )}>
       <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
-
-      {hasCameraPermission === false && (
-        <div className="absolute inset-0 bg-background/90 flex items-center justify-center p-4">
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Camera Access Required</AlertTitle>
-            <AlertDescription>
-              Please allow camera access in your browser settings to use this feature. You may need to refresh the page after granting permission.
-            </AlertDescription>
-          </Alert>
-        </div>
-      )}
-
-      {hasCameraPermission === null && (
-        <div className="absolute inset-0 bg-background/90 flex items-center justify-center">
-          <p>Requesting camera permission...</p>
-        </div>
-      )}
-
+      
       <div
         className={cn(
           "absolute inset-0 transition-opacity duration-500",
-          isDetecting ? "opacity-100" : "opacity-0"
+          (isDetecting || !isSimulating) ? "opacity-100" : "opacity-0"
         )}
       >
-        {/* Real Bounding Boxes */}
+        {/* Bounding Boxes for detected objects */}
         {!isSimulating && detectedObjects.map((obj, index) => {
           const [xMin, yMin, xMax, yMax] = obj.box;
           const boxWidth = (xMax - xMin) * 100;
           const boxHeight = (yMax - yMin) * 100;
 
-          // Don't render boxes that are too small or malformed
           if (boxWidth <= 0 || boxHeight <= 0) return null;
 
           return (
@@ -186,3 +167,5 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
 });
 
 CameraView.displayName = "CameraView";
+
+    

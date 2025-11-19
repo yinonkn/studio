@@ -14,6 +14,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { ScanLine } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export type Unit = "ml" | "oz";
 
@@ -30,6 +31,7 @@ export default function Home() {
   const [detectedObjects, setDetectedObjects] = useState<DetectedObject[]>([]);
   const [isAiPending, startAiTransition] = useTransition();
 
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const modelRef = useRef<cocossd.ObjectDetection | null>(null);
   const detectionIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -68,36 +70,38 @@ export default function Home() {
         return;
     }
     
-    const input: VolumeConfidenceScoreInput = {
-      glassShape: 'Cylinder',
-      waterLineConsistency: `Water line is horizontal at ${liquidLevel.toFixed(0)}% full, which is consistent with a cylindrical glass.`,
-      volumeEstimate: currentVolume,
-    };
+    startAiTransition(async () => {
+      const input: VolumeConfidenceScoreInput = {
+        glassShape: 'Cylinder',
+        waterLineConsistency: `Water line is horizontal at ${liquidLevel.toFixed(0)}% full, which is consistent with a cylindrical glass.`,
+        volumeEstimate: currentVolume,
+      };
 
-    try {
-      const result = await calculateVolumeConfidenceScore(input);
-      setConfidence({ score: result.confidenceScore, reasoning: result.reasoning });
-    } catch (error: any) {
-      console.error("Failed to get confidence score:", error);
-      // Since this is a secondary feature and the main request is offline, we can silence this toast
-      // to avoid clutter if the user is offline.
-      // toast({
-      //   variant: "destructive",
-      //   title: "AI Error",
-      //   description: `Could not calculate confidence score: ${error.message}`,
-      // });
-      setConfidence(null);
-    }
-  }, [isDetecting, liquidLevel, detectedObjects.length]);
+      try {
+        const result = await calculateVolumeConfidenceScore(input);
+        setConfidence({ score: result.confidenceScore, reasoning: result.reasoning });
+      } catch (error: any) {
+        console.error("Failed to get confidence score:", error);
+        // This is a secondary feature, so we won't show a toast for this error
+        // to avoid clutter, especially in offline scenarios.
+        setConfidence(null);
+      }
+    });
+  }, [isDetecting, liquidLevel, detectedObjects]);
   
   const runObjectDetection = useCallback(async () => {
-    if (!isDetecting || !modelRef.current || !videoRef.current || videoRef.current.readyState < 2) {
+    if (
+      !isDetecting ||
+      !modelRef.current ||
+      !videoRef.current ||
+      videoRef.current.readyState < 2 // Check if video is ready
+    ) {
       if (detectedObjects.length > 0) setDetectedObjects([]);
       return;
     }
-
+  
     const video = videoRef.current;
-    
+  
     try {
       const predictions = await modelRef.current.detect(video);
       const glasses: DetectedObject[] = predictions
@@ -125,16 +129,13 @@ export default function Home() {
   }, [isDetecting, toast, detectedObjects.length]);
 
   useEffect(() => {
-    if (isDetecting && modelRef.current) {
-        detectionIntervalRef.current = setInterval(() => {
-            startAiTransition(() => {
-                runObjectDetection();
-            });
-        }, 1000); // Run detection every second
+    if (isDetecting && modelRef.current && hasCameraPermission) {
+        detectionIntervalRef.current = setInterval(runObjectDetection, 1000); // Run detection every second
     } else {
         if (detectionIntervalRef.current) {
             clearInterval(detectionIntervalRef.current);
         }
+        setDetectedObjects([]);
     }
 
     return () => {
@@ -142,14 +143,12 @@ export default function Home() {
             clearInterval(detectionIntervalRef.current);
         }
     };
-  }, [isDetecting, runObjectDetection]);
+  }, [isDetecting, hasCameraPermission, runObjectDetection]);
 
 
   useEffect(() => {
-    startAiTransition(() => {
-      updateConfidence(volumeInMl);
-    });
-  }, [volumeInMl, detectedObjects, updateConfidence]);
+    updateConfidence(volumeInMl);
+  }, [volumeInMl, detectedObjects.length, updateConfidence]);
   
   const handleLiquidLevelChange = (value: number[]) => {
     setLiquidLevel(value[0]);
@@ -172,7 +171,15 @@ export default function Home() {
         <div className="container mx-auto px-4 py-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
             
-            <div className="lg:col-span-2 flex justify-center">
+            <div className="lg:col-span-2 flex flex-col items-center gap-4">
+               {hasCameraPermission === false && (
+                <Alert variant="destructive">
+                  <AlertTitle>Camera Access Required</AlertTitle>
+                  <AlertDescription>
+                    Please allow camera access to use this feature. You may need to refresh the page.
+                  </AlertDescription>
+                </Alert>
+              )}
               <CameraView
                 ref={videoRef}
                 liquidLevel={liquidLevel}
@@ -183,6 +190,7 @@ export default function Home() {
                 facingMode={facingMode}
                 detectedObjects={detectedObjects}
                 isSimulating={isSimulating}
+                onCameraPermissionChange={setHasCameraPermission}
               />
             </div>
 
@@ -204,6 +212,7 @@ export default function Home() {
                       id="detection-switch"
                       checked={isDetecting}
                       onCheckedChange={setDetecting}
+                      disabled={!hasCameraPermission}
                     />
                   </div>
                   <div className="space-y-3">
@@ -233,7 +242,7 @@ export default function Home() {
                     {!isAiPending && confidence && (
                         <p className="text-sm">{confidence.reasoning}</p>
                     )}
-                    {!isAiPending && !confidence && <p className="text-sm text-muted-foreground">{!isDetecting ? "Enable detection to see AI analysis." : "Point the camera at a glass."}</p>}
+                    {!isAiPending && !confidence && <p className="text-sm text-muted-foreground">{!isDetecting ? "Enable detection to see AI analysis." : hasCameraPermission ? "Point the camera at a glass." : "Camera not available."}</p>}
                  </CardContent>
               </Card>
             </div>
@@ -252,4 +261,5 @@ export default function Home() {
       />
     </div>
   );
-}
+
+    
