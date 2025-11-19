@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, useTransition, useRef } from "react";
+import * as tf from '@tensorflow/tfjs';
+import * as cocossd from '@tensorflow-models/coco-ssd';
+
 import { calculateVolumeConfidenceScore, VolumeConfidenceScoreInput } from "@/ai/flows/volume-confidence-score";
-import { detectObjectsInImage } from "@/ai/flows/object-detection";
 import { Header } from "@/components/volume-vision/header";
 import { SettingsDialog } from "@/components/volume-vision/settings-dialog";
 import { CameraView, FacingMode, DetectedObject } from "@/components/volume-vision/camera-view";
@@ -29,8 +31,32 @@ export default function Home() {
   const [isAiPending, startAiTransition] = useTransition();
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const modelRef = useRef<cocossd.ObjectDetection | null>(null);
+  const detectionIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   const { toast } = useToast();
+
+  useEffect(() => {
+    async function loadModel() {
+      try {
+        await tf.ready();
+        const model = await cocossd.load();
+        modelRef.current = model;
+        toast({
+          title: "Local AI model loaded",
+          description: "Object detection is now running locally.",
+        });
+      } catch (error) {
+        console.error("Failed to load model:", error);
+        toast({
+          variant: "destructive",
+          title: "Model Load Error",
+          description: "Could not load the local object detection model.",
+        });
+      }
+    }
+    loadModel();
+  }, [toast]);
 
   const volumeInMl = useMemo(() => {
     return (liquidLevel / 100) * MAX_VOLUME_ML;
@@ -53,55 +79,70 @@ export default function Home() {
       setConfidence({ score: result.confidenceScore, reasoning: result.reasoning });
     } catch (error: any) {
       console.error("Failed to get confidence score:", error);
-      toast({
-        variant: "destructive",
-        title: "AI Error",
-        description: `Could not calculate confidence score: ${error.message}`,
-      });
+      // Since this is a secondary feature and the main request is offline, we can silence this toast
+      // to avoid clutter if the user is offline.
+      // toast({
+      //   variant: "destructive",
+      //   title: "AI Error",
+      //   description: `Could not calculate confidence score: ${error.message}`,
+      // });
       setConfidence(null);
     }
-  }, [isDetecting, liquidLevel, toast, detectedObjects.length]);
+  }, [isDetecting, liquidLevel, detectedObjects.length]);
   
   const runObjectDetection = useCallback(async () => {
-    if (!isDetecting || !videoRef.current || videoRef.current.readyState < 2) {
+    if (!isDetecting || !modelRef.current || !videoRef.current || videoRef.current.readyState < 2) {
       if (detectedObjects.length > 0) setDetectedObjects([]);
       return;
     }
 
     const video = videoRef.current;
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const imageDataUri = canvas.toDataURL('image/jpeg');
-
+    
     try {
-      const result = await detectObjectsInImage({ imageDataUri });
-      const glasses = result.objects.filter(obj => obj.label.toLowerCase().includes('glass'));
+      const predictions = await modelRef.current.detect(video);
+      const glasses: DetectedObject[] = predictions
+        .filter(p => (p.class === 'cup' || p.class === 'wine glass') && p.score > 0.5)
+        .map(p => ({
+          label: p.class,
+          // Convert TF bbox from [x, y, width, height] to our [x_min, y_min, x_max, y_max] normalized format
+          box: [
+            p.bbox[0] / video.videoWidth,
+            p.bbox[1] / video.videoHeight,
+            (p.bbox[0] + p.bbox[2]) / video.videoWidth,
+            (p.bbox[1] + p.bbox[3]) / video.videoHeight,
+          ],
+        }));
       setDetectedObjects(glasses);
     } catch (error: any) {
       console.error("Failed to detect objects:", error);
       setDetectedObjects([]);
        toast({
         variant: "destructive",
-        title: "AI Error",
+        title: "Local AI Error",
         description: `Could not perform object detection: ${error.message}`,
       });
     }
   }, [isDetecting, toast, detectedObjects.length]);
 
   useEffect(() => {
-    const detectionInterval = setInterval(() => {
-        startAiTransition(() => {
-            runObjectDetection();
-        });
-    }, 2000); // Run detection every 2 seconds
+    if (isDetecting && modelRef.current) {
+        detectionIntervalRef.current = setInterval(() => {
+            startAiTransition(() => {
+                runObjectDetection();
+            });
+        }, 1000); // Run detection every second
+    } else {
+        if (detectionIntervalRef.current) {
+            clearInterval(detectionIntervalRef.current);
+        }
+    }
 
-    return () => clearInterval(detectionInterval);
-  }, [runObjectDetection]);
+    return () => {
+        if (detectionIntervalRef.current) {
+            clearInterval(detectionIntervalRef.current);
+        }
+    };
+  }, [isDetecting, runObjectDetection]);
 
 
   useEffect(() => {
@@ -174,7 +215,7 @@ export default function Home() {
                       step={1}
                       value={[liquidLevel]}
                       onValueChange={handleLiquidLevelChange}
-                      disabled={!isDetecting || !isSimulating}
+                      disabled={!isSimulating}
                     />
                   </div>
                 </CardContent>
@@ -184,11 +225,11 @@ export default function Home() {
                  <CardHeader>
                    <CardTitle>AI Analysis</CardTitle>
                    <CardDescription>
-                     Confidence score and reasoning from the AI model.
+                     Confidence score from the cloud AI model (requires internet).
                    </CardDescription>
                  </CardHeader>
                  <CardContent>
-                    {(isAiPending) && <p className="text-sm text-muted-foreground">Analyzing...</p>}
+                    {(isAiPending && detectedObjects.length > 0) && <p className="text-sm text-muted-foreground">Analyzing...</p>}
                     {!isAiPending && confidence && (
                         <p className="text-sm">{confidence.reasoning}</p>
                     )}
