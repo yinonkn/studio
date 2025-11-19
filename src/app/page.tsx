@@ -21,6 +21,7 @@ export default function Home() {
   const [isSettingsOpen, setSettingsOpen] = useState(false);
   
   const [detectedObjects, setDetectedObjects] = useState<DetectedObject[]>([]);
+  const [confidenceScore, setConfidenceScore] = useState<number | null>(null);
   
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -29,17 +30,12 @@ export default function Home() {
   
   const { toast } = useToast();
 
-  // The liquid level is determined by the bounding box.
   const dynamicLiquidLevel = useMemo(() => {
     if (detectedObjects.length === 0) {
       return 0;
     }
-    // Estimate liquid level based on the bounding box position.
     const glass = detectedObjects[0];
     const boxHeight = glass.box[3] - glass.box[1];
-    // This is a simplification. A more accurate model would consider perspective.
-    // Assuming the liquid level is proportional to the inverse of the top y-coordinate within the box.
-    // A lower y_min (closer to top of screen) means a fuller glass.
     return Math.max(0, Math.min(100, 100 - (glass.box[1] / (1 - boxHeight)) * 100));
 
   }, [detectedObjects]);
@@ -69,13 +65,32 @@ export default function Home() {
   const volumeInMl = useMemo(() => {
     return (dynamicLiquidLevel / 100) * MAX_VOLUME_ML;
   }, [dynamicLiquidLevel]);
+
+  const getConfidenceScore = useCallback(async (glass: DetectedObject) => {
+    try {
+      const input: VolumeConfidenceScoreInput = {
+        glassShape: glass.label,
+        waterLineConsistency: 'consistent', // This is a placeholder for now
+        volumeEstimate: volumeInMl,
+      };
+      const result = await calculateVolumeConfidenceScore(input);
+      setConfidenceScore(result.confidenceScore);
+    } catch(e) {
+      console.error("Could not get confidence score", e);
+      toast({
+        variant: 'destructive',
+        title: 'AI Confidence Error',
+        description: 'Failed to calculate the volume confidence score.'
+      });
+      setConfidenceScore(null);
+    }
+  }, [volumeInMl, toast]);
   
   const runObjectDetection = useCallback(async () => {
     if (
       !modelRef.current ||
       !videoRef.current ||
-      !videoRef.current.srcObject ||
-      videoRef.current.readyState < 2 // Check if video is ready
+      videoRef.current.readyState < 2
     ) {
       if (detectedObjects.length > 0) setDetectedObjects([]);
       return;
@@ -89,10 +104,9 @@ export default function Home() {
     try {
       const predictions = await modelRef.current.detect(video);
       const glasses: DetectedObject[] = predictions
-        .filter(p => (p.class === 'cup' || p.class === 'wine glass') && p.score > 0.5)
+        .filter(p => (p.class === 'cup' || p.class === 'wine glass') && p.score > 0.6)
         .map(p => ({
           label: p.class,
-          // Convert TF bbox from [x, y, width, height] to our [x_min, y_min, x_max, y_max] normalized format
           box: [
             p.bbox[0] / video.videoWidth,
             p.bbox[1] / video.videoHeight,
@@ -101,6 +115,11 @@ export default function Home() {
           ],
         }));
       setDetectedObjects(glasses);
+      if (glasses.length > 0) {
+        getConfidenceScore(glasses[0]);
+      } else {
+        setConfidenceScore(null);
+      }
     } catch (error: any) {
       console.error("Failed to detect objects:", error);
       setDetectedObjects([]);
@@ -110,11 +129,11 @@ export default function Home() {
         description: `Could not perform object detection: ${error.message}`,
       });
     }
-  }, [toast, detectedObjects.length]);
+  }, [toast, detectedObjects.length, getConfidenceScore]);
 
   useEffect(() => {
     if (modelRef.current && hasCameraPermission) {
-        detectionIntervalRef.current = setInterval(runObjectDetection, 1000); // Run detection every second
+        detectionIntervalRef.current = setInterval(runObjectDetection, 1500);
     } else {
         if (detectionIntervalRef.current) {
             clearInterval(detectionIntervalRef.current);
@@ -155,7 +174,7 @@ export default function Home() {
               liquidLevel={dynamicLiquidLevel}
               volume={volumeInMl}
               unit={unit}
-              confidenceScore={null}
+              confidenceScore={confidenceScore}
               isDetecting={true}
               facingMode={facingMode}
               detectedObjects={detectedObjects}

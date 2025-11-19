@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState, forwardRef } from "react";
 import { cn } from "@/lib/utils";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useOrientation } from "@/hooks/use-orientation";
 
 export type FacingMode = "user" | "environment";
@@ -39,7 +38,7 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
   const videoRef = (ref as React.RefObject<HTMLVideoElement>) || internalVideoRef;
 
   const streamRef = useRef<MediaStream | null>(null);
-  const orientation = useOrientation();
+  useOrientation(); // Re-evaluate on orientation change
 
   useEffect(() => {
     // Stop any existing stream
