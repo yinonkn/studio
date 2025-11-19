@@ -123,6 +123,12 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
         {/* Real Bounding Boxes */}
         {!isSimulating && detectedObjects.map((obj, index) => {
           const [xMin, yMin, xMax, yMax] = obj.box;
+          const boxWidth = (xMax - xMin) * 100;
+          const boxHeight = (yMax - yMin) * 100;
+
+          // Don't render boxes that are too small or malformed
+          if (boxWidth <= 0 || boxHeight <= 0) return null;
+
           return (
             <div key={index}>
               <div
@@ -130,8 +136,8 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
                 style={{
                   left: `${xMin * 100}%`,
                   top: `${yMin * 100}%`,
-                  width: `${(xMax - xMin) * 100}%`,
-                  height: `${(yMax - yMin) * 100}%`,
+                  width: `${boxWidth}%`,
+                  height: `${boxHeight}%`,
                 }}
               ></div>
               <div
@@ -139,8 +145,8 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
                  style={{
                   left: `${xMin * 100}%`,
                   top: `${yMin * 100}%`,
-                  width: `${(xMax - xMin) * 100}%`,
-                  height: `${(yMax - yMin) * 100}%`,
+                  width: `${boxWidth}%`,
+                  height: `${boxHeight}%`,
                 }}
               >
                 <div
@@ -151,26 +157,6 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
             </div>
           )
         })}
-
-        {/* Simulated Bounding Box */}
-        {isSimulating && (
-            <>
-                <div className={cn(
-                    "absolute border-2 border-dashed border-accent/50 rounded-lg shadow-lg transition-all duration-300",
-                    orientation === 'portrait' ? "top-[10%] left-[25%] w-1/2 h-[80%]" : "top-[10%] left-[30%] w-[40%] h-[80%]"
-                )}></div>
-                 <div className={cn(
-                    "absolute overflow-hidden rounded-b-md",
-                    orientation === 'portrait' ? "bottom-[11%] left-[26%] w-[48%] h-[78%]" : "bottom-[11%] left-[31%] w-[38%] h-[78%]"
-                    )}>
-                    <div
-                        className="absolute bottom-0 left-0 w-full bg-sky-500/50 backdrop-blur-sm transition-all duration-500 ease-in-out"
-                        style={{ height: waterHeight }}
-                    ></div>
-                </div>
-            </>
-        )}
-
 
         {/* Volume Overlay */}
         {(isSimulating || detectedObjects.length > 0) && (
