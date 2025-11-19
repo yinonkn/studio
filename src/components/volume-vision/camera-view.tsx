@@ -95,35 +95,27 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
         {/* Bounding Boxes for detected objects */}
         {detectedObjects.map((obj, index) => {
           const [xMin, yMin, xMax, yMax] = obj.box;
-          const boxWidth = (xMax - xMin)- (xMax - xMin) * 100;
+          const boxWidth = (xMax - xMin) * 100;
           const boxHeight = (yMax - yMin) * 100;
 
           if (boxWidth <= 0 || boxHeight <= 0) return null;
 
           return (
-            <div 
+            <div
               key={index}
-              className="absolute"
+              className="absolute border-2 border-accent/70 rounded-xl shadow-2xl backdrop-blur-sm"
               style={{
                 left: `${xMin * 100}%`,
                 top: `${yMin * 100}%`,
                 width: `${boxWidth}%`,
                 height: `${boxHeight}%`,
-                transformStyle: 'preserve-3d',
+                boxShadow: "0 10px 40px rgba(0, 180, 255, 0.25)",
               }}
             >
               <div
-                className="w-full h-full border-2 border-accent/70 rounded-full shadow-2xl"
-                style={{
-                  transform: 'rotateY(30deg)',
-                  boxShadow: "0 15px 50px rgba(0, 180, 255, 0.3)",
-                }}
-              >
-                <div
-                  className="absolute bottom-0 left-0 w-full bg-sky-500/50 backdrop-blur-sm transition-all duration-500 ease-in-out rounded-b-full"
-                  style={{ height: waterHeight }}
-                ></div>
-              </div>
+                className="absolute bottom-0 left-0 w-full bg-sky-500/50 transition-all duration-500 ease-in-out rounded-b-xl"
+                style={{ height: waterHeight }}
+              />
             </div>
           )
         })}
