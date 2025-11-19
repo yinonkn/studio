@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useOrientation, Orientation } from "@/hooks/use-orientation";
 
 export type FacingMode = "user" | "environment";
 
@@ -31,6 +32,7 @@ export function CameraView({
     null
   );
   const streamRef = useRef<MediaStream | null>(null);
+  const orientation = useOrientation();
 
   useEffect(() => {
     // Stop any existing stream
@@ -79,7 +81,10 @@ export function CameraView({
   const ConfidenceIcon = confidenceScore === null ? AlertTriangle : confidenceScore > 0.7 ? CheckCircle2 : AlertTriangle;
 
   return (
-    <div className="relative w-full max-w-md mx-auto aspect-[3/4] overflow-hidden rounded-2xl shadow-2xl bg-neutral-800 border-4 border-neutral-700">
+    <div className={cn(
+      "relative w-full mx-auto overflow-hidden rounded-2xl shadow-2xl bg-neutral-800 border-4 border-neutral-700",
+      orientation === 'portrait' ? "max-w-md aspect-[3/4]" : "max-w-xl aspect-video"
+    )}>
       <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
 
       {hasCameraPermission === false && (
@@ -108,10 +113,17 @@ export function CameraView({
         )}
       >
         {/* Bounding Box */}
-        <div className="absolute top-[10%] left-[25%] w-1/2 h-[80%] border-2 border-accent rounded-lg shadow-lg transition-all duration-300"></div>
+        <div className={cn(
+            "absolute border-2 border-accent rounded-lg shadow-lg transition-all duration-300",
+            orientation === 'portrait' ? "top-[10%] left-[25%] w-1/2 h-[80%]" : "top-[10%] left-[30%] w-[40%] h-[80%]"
+            )}>
+        </div>
 
         {/* Liquid Simulation */}
-        <div className="absolute bottom-[11%] left-[26%] w-[48%] h-[78%] overflow-hidden rounded-b-md">
+        <div className={cn(
+            "absolute overflow-hidden rounded-b-md",
+            orientation === 'portrait' ? "bottom-[11%] left-[26%] w-[48%] h-[78%]" : "bottom-[11%] left-[31%] w-[38%] h-[78%]"
+            )}>
             <div 
                 className="absolute bottom-0 left-0 w-full bg-sky-500/50 backdrop-blur-sm transition-all duration-500 ease-in-out"
                 style={{ height: waterHeight }}
