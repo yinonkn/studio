@@ -21,7 +21,6 @@ type CameraViewProps = {
   isDetecting: boolean;
   facingMode: FacingMode;
   detectedObjects: DetectedObject[];
-  isSimulating: boolean;
   onCameraPermissionChange: (hasPermission: boolean) => void;
 };
 
@@ -33,7 +32,6 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
   isDetecting,
   facingMode,
   detectedObjects,
-  isSimulating,
   onCameraPermissionChange,
 }, ref) => {
   const { toast } = useToast();
@@ -99,11 +97,11 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
       <div
         className={cn(
           "absolute inset-0 transition-opacity duration-500",
-          (isDetecting || !isSimulating) ? "opacity-100" : "opacity-0"
+          isDetecting ? "opacity-100" : "opacity-0"
         )}
       >
         {/* Bounding Boxes for detected objects */}
-        {!isSimulating && detectedObjects.map((obj, index) => {
+        {detectedObjects.map((obj, index) => {
           const [xMin, yMin, xMax, yMax] = obj.box;
           const boxWidth = (xMax - xMin) * 100;
           const boxHeight = (yMax - yMin) * 100;
@@ -140,7 +138,7 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
         })}
 
         {/* Volume Overlay */}
-        {(isSimulating || detectedObjects.length > 0) && (
+        {detectedObjects.length > 0 && (
           <div className="absolute top-[12%] right-[5%] bg-primary/80 text-primary-foreground p-3 rounded-lg shadow-lg backdrop-blur-sm animate-fade-in">
             <p className="font-semibold text-lg">
               {displayVolume.toFixed(0)} {unit}
@@ -167,5 +165,3 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
 });
 
 CameraView.displayName = "CameraView";
-
-    

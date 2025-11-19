@@ -189,7 +189,6 @@ export default function Home() {
                 isDetecting={isDetecting}
                 facingMode={facingMode}
                 detectedObjects={detectedObjects}
-                isSimulating={isSimulating}
                 onCameraPermissionChange={setHasCameraPermission}
               />
             </div>
@@ -261,5 +260,4 @@ export default function Home() {
       />
     </div>
   );
-
-    
+}
