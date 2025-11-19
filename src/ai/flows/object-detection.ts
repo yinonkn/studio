@@ -40,6 +40,7 @@ const prompt = ai.definePrompt({
   name: 'objectDetectionPrompt',
   input: {schema: DetectObjectsInputSchema},
   output: {schema: DetectObjectsOutputSchema},
+  model: 'googleai/gemini-2.5-flash',
   prompt: `You are an expert object detection model. Your task is to identify and locate "drinking glass" in the provided image.
 
 For each drinking glass you find, provide its label and a precise bounding box.
