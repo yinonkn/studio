@@ -89,8 +89,7 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
 
   return (
     <div className={cn(
-      "relative w-full mx-auto overflow-hidden rounded-2xl shadow-2xl bg-neutral-800 border-4 border-neutral-700",
-      orientation === 'portrait' ? "max-w-md aspect-[3/4]" : "max-w-xl aspect-video"
+      "relative w-full h-full mx-auto overflow-hidden rounded-2xl shadow-2xl bg-neutral-800 border-4 border-neutral-700"
     )}>
       <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
       

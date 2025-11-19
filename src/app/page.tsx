@@ -36,7 +36,11 @@ export default function Home() {
     }
     // Estimate liquid level based on the bounding box position.
     const glass = detectedObjects[0];
-    return Math.round(100 - (glass.box[1] * 100));
+    const boxHeight = glass.box[3] - glass.box[1];
+    // This is a simplification. A more accurate model would consider perspective.
+    // Assuming the liquid level is proportional to the inverse of the top y-coordinate within the box.
+    // A lower y_min (closer to top of screen) means a fuller glass.
+    return Math.max(0, Math.min(100, 100 - (glass.box[1] / (1 - boxHeight)) * 100));
 
   }, [detectedObjects]);
 
@@ -146,19 +150,17 @@ export default function Home() {
                 </AlertDescription>
             </Alert>
             )}
-            {hasCameraPermission && (
-              <CameraView
-                ref={videoRef}
-                liquidLevel={dynamicLiquidLevel}
-                volume={volumeInMl}
-                unit={unit}
-                confidenceScore={null}
-                isDetecting={true}
-                facingMode={facingMode}
-                detectedObjects={detectedObjects}
-                onCameraPermissionChange={setHasCameraPermission}
-              />
-            )}
+            <CameraView
+              ref={videoRef}
+              liquidLevel={dynamicLiquidLevel}
+              volume={volumeInMl}
+              unit={unit}
+              confidenceScore={null}
+              isDetecting={true}
+              facingMode={facingMode}
+              detectedObjects={detectedObjects}
+              onCameraPermissionChange={setHasCameraPermission}
+            />
         </div>
       </main>
 
