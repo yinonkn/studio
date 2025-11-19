@@ -6,12 +6,15 @@ import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
+export type FacingMode = "user" | "environment";
+
 type CameraViewProps = {
   liquidLevel: number; // 0-100
   volume: number;
   unit: "ml" | "oz";
   confidenceScore: number | null;
   isDetecting: boolean;
+  facingMode: FacingMode;
 };
 
 export function CameraView({
@@ -20,17 +23,27 @@ export function CameraView({
   unit,
   confidenceScore,
   isDetecting,
+  facingMode,
 }: CameraViewProps) {
   const { toast } = useToast();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(
     null
   );
+  const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
+    // Stop any existing stream
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+
     const getCameraPermission = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: facingMode } 
+        });
+        streamRef.current = stream;
         setHasCameraPermission(true);
 
         if (videoRef.current) {
@@ -49,7 +62,13 @@ export function CameraView({
     };
 
     getCameraPermission();
-  }, [toast]);
+    
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    }
+  }, [toast, facingMode]);
   
   const ozVolume = volume * 0.033814;
   const displayVolume = unit === 'oz' ? ozVolume : volume;

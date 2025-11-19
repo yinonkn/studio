@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useTransition } from "react"
 import { calculateVolumeConfidenceScore, VolumeConfidenceScoreInput } from "@/ai/flows/volume-confidence-score";
 import { Header } from "@/components/volume-vision/header";
 import { SettingsDialog } from "@/components/volume-vision/settings-dialog";
-import { CameraView } from "@/components/volume-vision/camera-view";
+import { CameraView, FacingMode } from "@/components/volume-vision/camera-view";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -19,6 +19,7 @@ const MAX_VOLUME_ML = 350; // Max volume of the glass in ml
 export default function Home() {
   const [liquidLevel, setLiquidLevel] = useState(50); // 0-100%
   const [unit, setUnit] = useState<Unit>("ml");
+  const [facingMode, setFacingMode] = useState<FacingMode>("environment");
   const [isSettingsOpen, setSettingsOpen] = useState(false);
   const [isDetecting, setDetecting] = useState(true);
   
@@ -69,7 +70,10 @@ export default function Home() {
   
   const handleUnitChange = (newUnit: Unit) => {
     setUnit(newUnit);
-    setSettingsOpen(false);
+  }
+
+  const handleFacingModeChange = (newMode: FacingMode) => {
+    setFacingMode(newMode);
   }
 
   return (
@@ -86,6 +90,7 @@ export default function Home() {
                 unit={unit}
                 confidenceScore={confidence?.score ?? null}
                 isDetecting={isDetecting}
+                facingMode={facingMode}
               />
             </div>
 
@@ -150,6 +155,8 @@ export default function Home() {
         onOpenChange={setSettingsOpen}
         unit={unit}
         onUnitChange={handleUnitChange}
+        facingMode={facingMode}
+        onFacingModeChange={handleFacingModeChange}
       />
     </div>
   );
