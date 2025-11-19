@@ -1,3 +1,10 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "glass-of-water",
+      "description": "A clear glass of water on a neutral background.",
+      "imageUrl": "https://images.unsplash.com/photo-1624948465027-6f9b51067557?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxnbGFzcyUyMHdhdGVyfGVufDB8fHx8MTc2MzUzMzAzM3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "glass water"
+    }
+  ]
 }
