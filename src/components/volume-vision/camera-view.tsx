@@ -83,7 +83,7 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
   return (
     <div className={cn(
       "relative w-full h-full mx-auto overflow-hidden rounded-2xl shadow-2xl bg-neutral-800 border-4 border-neutral-700"
-    )}>
+    )} style={{ perspective: '1000px' }}>
       <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
       
       <div
@@ -91,12 +91,11 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
           "absolute inset-0 transition-opacity duration-500",
           isDetecting ? "opacity-100" : "opacity-0"
         )}
-        style={{ perspective: "1000px" }}
       >
         {/* Bounding Boxes for detected objects */}
         {detectedObjects.map((obj, index) => {
           const [xMin, yMin, xMax, yMax] = obj.box;
-          const boxWidth = (xMax - xMin) * 100;
+          const boxWidth = (xMax - xMin)- (xMax - xMin) * 100;
           const boxHeight = (yMax - yMin) * 100;
 
           if (boxWidth <= 0 || boxHeight <= 0) return null;
@@ -110,18 +109,18 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(({
                 top: `${yMin * 100}%`,
                 width: `${boxWidth}%`,
                 height: `${boxHeight}%`,
-                transformStyle: "preserve-3d",
+                transformStyle: 'preserve-3d',
               }}
             >
               <div
-                className="w-full h-full border-2 border-accent/70 rounded-lg shadow-2xl"
+                className="w-full h-full border-2 border-accent/70 rounded-full shadow-2xl"
                 style={{
-                  transform: 'translateZ(30px) rotateY(15deg)',
+                  transform: 'rotateY(30deg)',
                   boxShadow: "0 15px 50px rgba(0, 180, 255, 0.3)",
                 }}
               >
                 <div
-                  className="absolute bottom-0 left-0 w-full bg-sky-500/50 backdrop-blur-sm transition-all duration-500 ease-in-out"
+                  className="absolute bottom-0 left-0 w-full bg-sky-500/50 backdrop-blur-sm transition-all duration-500 ease-in-out rounded-b-full"
                   style={{ height: waterHeight }}
                 ></div>
               </div>
