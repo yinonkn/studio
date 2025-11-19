@@ -51,12 +51,12 @@ export default function Home() {
     try {
       const result = await calculateVolumeConfidenceScore(input);
       setConfidence({ score: result.confidenceScore, reasoning: result.reasoning });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to get confidence score:", error);
       toast({
         variant: "destructive",
         title: "AI Error",
-        description: "Could not calculate confidence score.",
+        description: `Could not calculate confidence score: ${error.message}`,
       });
       setConfidence(null);
     }
@@ -82,13 +82,13 @@ export default function Home() {
       const result = await detectObjectsInImage({ imageDataUri });
       const glasses = result.objects.filter(obj => obj.label === 'drinking glass');
       setDetectedObjects(glasses);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to detect objects:", error);
       setDetectedObjects([]);
        toast({
         variant: "destructive",
         title: "AI Error",
-        description: "Could not perform object detection.",
+        description: `Could not perform object detection: ${error.message}`,
       });
     }
   }, [isDetecting, toast, detectedObjects.length]);
